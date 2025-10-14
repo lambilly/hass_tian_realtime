@@ -1,4 +1,4 @@
-tian_realtime/
+hass_tian_realtime/
 ├── custom_components/
 │   └── tian_realtime/
 │       ├── __init__.py
