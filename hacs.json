@@ -1,0 +1,15 @@
+{
+  "name": "天聚数行-实时动态",
+  "render_readme": true,
+  "domains": ["sensor"],
+  "homeassistant": "2023.8.0",
+  "iot_class": "Cloud Polling",
+  "zip_release": false,
+  "filename": "tian_realtime.zip",
+  "hide_default_branch": true,
+  "persistent_directory": "tian_realtime",
+  "country": ["CN"],
+  "documentation": "https://github.com/lambilly/hass_tian_realtime",
+  "issue_tracker": "https://github.com/lambilly/hass_tian_realtime/issues",
+  "codeowners": ["@lambilly"]
+}
