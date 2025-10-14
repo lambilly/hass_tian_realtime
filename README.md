@@ -105,3 +105,45 @@ automation:
       service: notify.mobile_app
       data:
         message: "空气质量变差：{{ states('sensor.kong_qi_zhi_liang') }}"
+```
+### 在仪表板上显示滚动信息
+```yaml
+type: entities
+entities:
+  - entity: sensor.gun_dong_nei_rong
+    name: 实时信息
+    secondary_info: last-changed
+```
+## 故障排除
+### 常见问题
+1.	API 调用失败
+o	检查 API 密钥是否正确
+o	确认已开通相应接口
+o	查看 Home Assistant 日志获取详细错误信息
+2.	数据不更新
+o	检查网络连接
+o	确认更新间隔设置合理
+o	重启集成
+3.	实体不可用
+o	重启 Home Assistant
+o	检查集成配置
+### 日志调试
+在 configuration.yaml 中添加以下配置开启详细日志：
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.tian_realtime: debug
+```
+## 支持与反馈
+如果您遇到问题或有建议，请通过以下方式联系：
+•	在 GitHub 仓库提交 Issue
+•	发送邮件至：你的邮箱
+## 许可证
+本项目采用 MIT 许可证 - 查看 LICENSE 文件了解详情。
+## 更新日志
+v1.0.0
+•	初始版本发布
+•	支持头条新闻、油价、汇率、空气质量数据
+•	实现滚动显示功能
+
