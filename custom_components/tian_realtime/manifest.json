@@ -1,0 +1,12 @@
+{
+  "domain": "tian_realtime",
+  "name": "天聚数行-实时动态",
+  "codeowners": ["@lambilly"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/lambilly/hass_tian_realtime",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
