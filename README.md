@@ -109,11 +109,17 @@ automation:
 ```
 ### 在仪表板上显示滚动信息
 ```yaml
-type: entities
-entities:
-  - entity: sensor.gun_dong_nei_rong
-    name: 实时信息
-    secondary_info: last-changed
+type: custom:html-template-card
+content: >-
+  <div
+  style="color: white;"><p align=left><h3 style="color: white; margin-bottom:
+  0px;">【📋实时动态】</h3> </p> </div>    <p align= left style="color:
+  white; font-size: 1.0em; margin-top: 10px;">{{ state_attr('sensor.gun_dong_nei_rong','hot_detail') }}
+  <br>{{ state_attr('sensor.gun_dong_nei_rong','rate_detail') }}
+  <br>{{ state_attr('sensor.gun_dong_nei_rong','oil_detail') }}
+  <br>{{ state_attr('sensor.gun_dong_nei_rong','air_detail') }}
+  </p>
+
 ```
 ## 故障排除
 ### 常见问题
