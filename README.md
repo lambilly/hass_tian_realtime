@@ -107,7 +107,7 @@ automation:
       data:
         message: "空气质量变差：{{ states('sensor.kong_qi_zhi_liang') }}"
 ```
-### 在仪表板上显示滚动信息
+### 在仪表板上显示滚动信息，需要在HACS安装：Lovelace HTML Jinja2 Template card 卡片
 ```yaml
 type: custom:html-template-card
 content: >-
