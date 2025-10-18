@@ -3,12 +3,11 @@
     "step": {
       "user": {
         "title": "天聚数行-实时动态配置",
-        "description": "请输入您的天聚数行 API 密钥并选择地区。\n天行数据 API 申请地址：{api_url}\n数据更新间隔范围：{min_update} 分钟 - {max_update} 分钟\n头条滚动间隔范围：{min_scroll} 秒 - {max_scroll} 秒",
+        "description": "请输入您的天聚数行 API 密钥并选择地区。\n天聚数行数据 API 申请地址：{api_url}\n数据更新时间为每天7:00和16:00自动更新\n头条滚动间隔范围：{min_scroll} 秒 - {max_scroll} 秒",
         "data": {
           "api_key": "API 密钥",
           "oil_province": "油价省份",
           "air_city": "空气质量城市",
-          "update_interval": "数据更新间隔（分钟）",
           "scroll_interval": "头条滚动间隔（秒）"
         }
       }
