@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import random
 
@@ -13,15 +13,14 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_interval, async_track_utc_time_change
 
 from .const import (
     DOMAIN,
     CONF_API_KEY,
     CONF_OIL_PROVINCE,
     CONF_AIR_CITY,
-    CONF_UPDATE_INTERVAL,
-    CONF_SCROLL_INTERVAL,
+    CONF_SCROLL_INTERVAL,  # 只导入 CONF_SCROLL_INTERVAL
     API_BASE_URL,
     API_HOT_NEWS,
     API_OIL_PRICE,
@@ -46,8 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_API_KEY],
         entry.data[CONF_OIL_PROVINCE],
         entry.data[CONF_AIR_CITY],
-        entry.data[CONF_UPDATE_INTERVAL],
-        entry.data[CONF_SCROLL_INTERVAL]
+        entry.data[CONF_SCROLL_INTERVAL]  # 只传递滚动间隔，不再传递更新间隔
     )
     
     await coordinator.async_config_entry_first_refresh()
@@ -68,8 +66,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         data = hass.data[DOMAIN].pop(entry.entry_id)
         coordinator = data["coordinator"]
-        # 取消滚动更新
-        coordinator.cancel_scroll_updates()
+        # 取消滚动更新和定时更新
+        coordinator.cancel_all_updates()
         if "session" in data:
             await data["session"].close()
 
@@ -79,13 +77,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 class TianRealtimeCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Tian Realtime data."""
 
-    def __init__(self, hass, session, api_key, oil_province, air_city, update_interval, scroll_interval):
+    def __init__(self, hass, session, api_key, oil_province, air_city, scroll_interval):
         """Initialize."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=update_interval),
+            # 不再使用固定的更新间隔，改为定时触发
+            update_interval=None,
         )
         
         self.session = session
@@ -97,9 +96,41 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         self._hot_data = {}
         self._current_hot_index = 0
         self._scroll_update_unsub = None
+        self._scheduled_update_unsub = []
+        self._last_successful_update = None
         
-        # 启动滚动更新
+        # 启动定时更新和滚动更新
+        self._setup_scheduled_updates()
         self._setup_scroll_updates()
+
+    def _setup_scheduled_updates(self):
+        """Setup scheduled updates at 7:00 and 16:00."""
+        # 取消现有的定时器
+        self.cancel_scheduled_updates()
+        
+        # 设置早上7点的定时更新
+        self._scheduled_update_unsub.append(
+            async_track_utc_time_change(
+                self.hass,
+                self._async_scheduled_update,
+                hour=7,
+                minute=0,
+                second=0
+            )
+        )
+        
+        # 设置下午16点的定时更新
+        self._scheduled_update_unsub.append(
+            async_track_utc_time_change(
+                self.hass,
+                self._async_scheduled_update,
+                hour=16,
+                minute=0,
+                second=0
+            )
+        )
+        
+        _LOGGER.info("Scheduled updates set for 7:00 and 16:00 daily")
 
     def _setup_scroll_updates(self):
         """Setup periodic scroll updates."""
@@ -113,11 +144,27 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             timedelta(seconds=self.scroll_interval)
         )
 
+    async def _async_scheduled_update(self, now=None):
+        """Perform scheduled update at 7:00 and 16:00."""
+        _LOGGER.info("Performing scheduled data update")
+        await self.async_refresh()
+
     def cancel_scroll_updates(self):
         """Cancel scroll updates."""
         if self._scroll_update_unsub:
             self._scroll_update_unsub()
             self._scroll_update_unsub = None
+
+    def cancel_scheduled_updates(self):
+        """Cancel scheduled updates."""
+        for unsub in self._scheduled_update_unsub:
+            unsub()
+        self._scheduled_update_unsub = []
+
+    def cancel_all_updates(self):
+        """Cancel all updates."""
+        self.cancel_scroll_updates()
+        self.cancel_scheduled_updates()
 
     @callback
     def _async_update_scroll_content(self, now=None):
@@ -144,6 +191,9 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             ]
             
             today_hot, today_oil, today_rate, today_air = await asyncio.gather(*tasks)
+            
+            # 记录成功更新时间
+            self._last_successful_update = current_time
             
             data = {
                 "today_hot": today_hot,
@@ -315,9 +365,13 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             current_hot_detail = self._hot_data.get(str(current_index), "")
         
         return {
+            "title": "📚实时动态",
+            "title1": "实时动态",  # 添加title1属性
+            "title2": "今日动态",  # 添加title2属性
             "hot_detail": f"📰头条：{current_hot_detail}" if current_hot_detail else "📰头条：暂无新闻",
             "oil_detail": self._data_cache.get("today_oil", {}).get("detail", ""),
             "rate_detail": self._data_cache.get("today_rate", {}).get("detail", ""),
             "air_detail": self._data_cache.get("today_air", {}).get("detail", ""),
-            "hot_index": self._current_hot_index + 1
+            "hot_index": self._current_hot_index + 1,
+            "update_time": self._last_successful_update  # 添加更新时间属性
         }

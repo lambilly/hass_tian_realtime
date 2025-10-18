@@ -15,12 +15,8 @@ from .const import (
     CONF_API_KEY,
     CONF_OIL_PROVINCE,
     CONF_AIR_CITY,
-    CONF_UPDATE_INTERVAL,
     CONF_SCROLL_INTERVAL,
-    DEFAULT_UPDATE_INTERVAL,
     DEFAULT_SCROLL_INTERVAL,
-    MIN_UPDATE_INTERVAL,
-    MAX_UPDATE_INTERVAL,
     MIN_SCROLL_INTERVAL,
     MAX_SCROLL_INTERVAL,
 )
@@ -64,13 +60,6 @@ class TianRealtimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_OIL_PROVINCE, default="福建"): vol.In(PROVINCES),
             vol.Required(CONF_AIR_CITY, default="莆田"): str,
             vol.Required(
-                CONF_UPDATE_INTERVAL, 
-                default=DEFAULT_UPDATE_INTERVAL
-            ): vol.All(
-                vol.Coerce(int),
-                vol.Range(min=MIN_UPDATE_INTERVAL, max=MAX_UPDATE_INTERVAL)
-            ),
-            vol.Required(
                 CONF_SCROLL_INTERVAL,
                 default=DEFAULT_SCROLL_INTERVAL
             ): vol.All(
@@ -85,8 +74,6 @@ class TianRealtimeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={
                 "api_url": "https://www.tianapi.com/",
-                "min_update": str(MIN_UPDATE_INTERVAL),
-                "max_update": str(MAX_UPDATE_INTERVAL),
                 "min_scroll": str(MIN_SCROLL_INTERVAL),
                 "max_scroll": str(MAX_SCROLL_INTERVAL),
             }
