@@ -20,7 +20,7 @@ from .const import (
     CONF_API_KEY,
     CONF_OIL_PROVINCE,
     CONF_AIR_CITY,
-    CONF_SCROLL_INTERVAL,  # 只导入 CONF_SCROLL_INTERVAL
+    CONF_SCROLL_INTERVAL,
     API_BASE_URL,
     API_HOT_NEWS,
     API_OIL_PRICE,
@@ -45,7 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_API_KEY],
         entry.data[CONF_OIL_PROVINCE],
         entry.data[CONF_AIR_CITY],
-        entry.data[CONF_SCROLL_INTERVAL]  # 只传递滚动间隔，不再传递更新间隔
+        entry.data[CONF_SCROLL_INTERVAL]
     )
     
     await coordinator.async_config_entry_first_refresh()
@@ -108,6 +108,10 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         # 取消现有的定时器
         self.cancel_scheduled_updates()
         
+        # 获取当前时间
+        now = dt_util.now()
+        _LOGGER.info(f"Setting up scheduled updates. Current time: {now}")
+        
         # 设置早上7点的定时更新
         self._scheduled_update_unsub.append(
             async_track_utc_time_change(
@@ -130,6 +134,20 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             )
         )
         
+        # 检查是否需要立即执行一次更新
+        current_hour = now.hour
+        if current_hour >= 7 and current_hour < 16:
+            # 如果当前时间在7点之后、16点之前，且今天还没有更新过，则立即更新
+            if not self._last_successful_update or dt_util.parse_datetime(self._last_successful_update).date() < now.date():
+                _LOGGER.info("Current time between 7:00 and 16:00, performing initial update")
+                self.hass.async_create_task(self._async_scheduled_update())
+        elif current_hour >= 16:
+            # 如果当前时间在16点之后，且今天还没有16点的更新，则立即更新
+            if not self._last_successful_update or dt_util.parse_datetime(self._last_successful_update).date() < now.date() or (
+                dt_util.parse_datetime(self._last_successful_update).hour < 16 and current_hour >= 16):
+                _LOGGER.info("Current time after 16:00, performing initial update")
+                self.hass.async_create_task(self._async_scheduled_update())
+        
         _LOGGER.info("Scheduled updates set for 7:00 and 16:00 daily")
 
     def _setup_scroll_updates(self):
@@ -146,7 +164,7 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
 
     async def _async_scheduled_update(self, now=None):
         """Perform scheduled update at 7:00 and 16:00."""
-        _LOGGER.info("Performing scheduled data update")
+        _LOGGER.info("Performing scheduled data update at %s", dt_util.now())
         await self.async_refresh()
 
     def cancel_scroll_updates(self):
