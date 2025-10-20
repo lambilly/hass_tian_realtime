@@ -13,7 +13,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
-from homeassistant.helpers.event import async_track_time_interval, async_track_utc_time_change
+from homeassistant.helpers.event import async_track_time_interval, async_track_time_change
 
 from .const import (
     DOMAIN,
@@ -98,57 +98,93 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         self._scroll_update_unsub = None
         self._scheduled_update_unsub = []
         self._last_successful_update = None
+        self._morning_retry_count = 0
+        self._morning_retry_unsub = None
         
         # 启动定时更新和滚动更新
         self._setup_scheduled_updates()
         self._setup_scroll_updates()
 
     def _setup_scheduled_updates(self):
-        """Setup scheduled updates at 7:00 and 16:00."""
+        """Setup scheduled updates at 7:00 and 16:00 using local time."""
         # 取消现有的定时器
         self.cancel_scheduled_updates()
         
-        # 获取当前时间
-        now = dt_util.now()
-        _LOGGER.info(f"Setting up scheduled updates. Current time: {now}")
-        
-        # 设置早上7点的定时更新
+        # 使用本地时间设置定时更新
+        # 早上7点的定时更新
         self._scheduled_update_unsub.append(
-            async_track_utc_time_change(
+            async_track_time_change(
                 self.hass,
-                self._async_scheduled_update,
+                self._async_morning_update,
                 hour=7,
                 minute=0,
                 second=0
             )
         )
         
-        # 设置下午16点的定时更新
+        # 下午16点的定时更新
         self._scheduled_update_unsub.append(
-            async_track_utc_time_change(
+            async_track_time_change(
                 self.hass,
-                self._async_scheduled_update,
+                self._async_afternoon_update,
                 hour=16,
                 minute=0,
                 second=0
             )
         )
         
-        # 检查是否需要立即执行一次更新
-        current_hour = now.hour
-        if current_hour >= 7 and current_hour < 16:
-            # 如果当前时间在7点之后、16点之前，且今天还没有更新过，则立即更新
-            if not self._last_successful_update or dt_util.parse_datetime(self._last_successful_update).date() < now.date():
-                _LOGGER.info("Current time between 7:00 and 16:00, performing initial update")
-                self.hass.async_create_task(self._async_scheduled_update())
-        elif current_hour >= 16:
-            # 如果当前时间在16点之后，且今天还没有16点的更新，则立即更新
-            if not self._last_successful_update or dt_util.parse_datetime(self._last_successful_update).date() < now.date() or (
-                dt_util.parse_datetime(self._last_successful_update).hour < 16 and current_hour >= 16):
-                _LOGGER.info("Current time after 16:00, performing initial update")
-                self.hass.async_create_task(self._async_scheduled_update())
+        _LOGGER.info("Scheduled updates set for 7:00 and 16:00 daily (local time)")
+
+    async def _async_morning_update(self, now=None):
+        """Perform morning update at 7:00 with retry mechanism."""
+        _LOGGER.info("Performing morning data update at 7:00")
+        self._morning_retry_count = 0
+        await self._async_perform_update_with_retry()
+
+    async def _async_afternoon_update(self, now=None):
+        """Perform afternoon update at 16:00."""
+        _LOGGER.info("Performing afternoon data update at 16:00")
+        # 取消早上可能的重试
+        if self._morning_retry_unsub:
+            self._morning_retry_unsub()
+            self._morning_retry_unsub = None
+            _LOGGER.info("Cancelled morning retry due to afternoon update")
         
-        _LOGGER.info("Scheduled updates set for 7:00 and 16:00 daily")
+        await self.async_refresh()
+
+    async def _async_perform_update_with_retry(self):
+        """Perform update with retry mechanism for morning updates."""
+        try:
+            await self.async_refresh()
+            # 如果更新成功，重置重试计数
+            self._morning_retry_count = 0
+            if self._morning_retry_unsub:
+                self._morning_retry_unsub()
+                self._morning_retry_unsub = None
+            _LOGGER.info("Morning update successful")
+            
+        except Exception as err:
+            _LOGGER.error("Error during morning update: %s", err)
+            
+            # 检查是否应该重试
+            if self._morning_retry_count < 2:
+                self._morning_retry_count += 1
+                _LOGGER.info("Scheduling retry %s in 10 minutes", self._morning_retry_count)
+                
+                # 10分钟后重试
+                self._morning_retry_unsub = async_track_time_interval(
+                    self.hass,
+                    self._async_retry_update,
+                    timedelta(minutes=10)
+                )
+            else:
+                _LOGGER.error("Morning update failed after %s retries", self._morning_retry_count)
+                self._morning_retry_count = 0
+
+    async def _async_retry_update(self, now=None):
+        """Perform retry update."""
+        _LOGGER.info("Performing retry update (attempt %s)", self._morning_retry_count)
+        await self._async_perform_update_with_retry()
 
     def _setup_scroll_updates(self):
         """Setup periodic scroll updates."""
@@ -161,11 +197,6 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             self._async_update_scroll_content,
             timedelta(seconds=self.scroll_interval)
         )
-
-    async def _async_scheduled_update(self, now=None):
-        """Perform scheduled update at 7:00 and 16:00."""
-        _LOGGER.info("Performing scheduled data update at %s", dt_util.now())
-        await self.async_refresh()
 
     def cancel_scroll_updates(self):
         """Cancel scroll updates."""
@@ -183,6 +214,9 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         """Cancel all updates."""
         self.cancel_scroll_updates()
         self.cancel_scheduled_updates()
+        if self._morning_retry_unsub:
+            self._morning_retry_unsub()
+            self._morning_retry_unsub = None
 
     @callback
     def _async_update_scroll_content(self, now=None):
@@ -197,8 +231,8 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Update data via API."""
         try:
-            # 使用正确的日期时间格式
-            current_time = dt_util.now().strftime("%Y-%m-%d %H:%M")
+            # 使用正确的日期时间格式 - 修正为 YYYY-MM-DD HH:MM:SS
+            current_time = dt_util.now().strftime("%Y-%m-%d %H:%M:%S")
             
             # 并行获取所有数据
             tasks = [
@@ -212,6 +246,16 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             
             # 记录成功更新时间
             self._last_successful_update = current_time
+            
+            # 为每个实体数据添加update_time属性
+            if isinstance(today_hot, dict):
+                today_hot["update_time"] = current_time
+            if isinstance(today_oil, dict):
+                today_oil["update_time"] = current_time
+            if isinstance(today_rate, dict):
+                today_rate["update_time"] = current_time
+            if isinstance(today_air, dict):
+                today_air["update_time"] = current_time
             
             data = {
                 "today_hot": today_hot,
@@ -227,14 +271,19 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             
         except Exception as err:
             _LOGGER.error("Error updating Tian Realtime data: %s", err)
-            current_time = dt_util.now().strftime("%Y-%m-%d %H:%M")
-            return {
-                "today_hot": {"detail": "更新失败", "error": str(err)},
-                "today_oil": {"detail": "更新失败", "error": str(err)},
-                "today_rate": {"detail": "更新失败", "error": str(err)},
-                "today_air": {"detail": "更新失败", "error": str(err)},
+            # 修正错误情况下的时间格式
+            current_time = dt_util.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 即使是错误情况也设置update_time
+            error_data = {
+                "today_hot": {"detail": "更新失败", "error": str(err), "update_time": current_time},
+                "today_oil": {"detail": "更新失败", "error": str(err), "update_time": current_time},
+                "today_rate": {"detail": "更新失败", "error": str(err), "update_time": current_time},
+                "today_air": {"detail": "更新失败", "error": str(err), "update_time": current_time},
                 "last_update": current_time
             }
+            
+            return error_data
 
     async def _fetch_hot_news(self):
         """Fetch hot news from API."""
@@ -384,12 +433,12 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         
         return {
             "title": "📚实时动态",
-            "title1": "实时动态",  # 添加title1属性
-            "title2": "今日动态",  # 添加title2属性
+            "title1": "实时动态",
+            "title2": "今日动态",
             "hot_detail": f"📰头条：{current_hot_detail}" if current_hot_detail else "📰头条：暂无新闻",
             "oil_detail": self._data_cache.get("today_oil", {}).get("detail", ""),
             "rate_detail": self._data_cache.get("today_rate", {}).get("detail", ""),
             "air_detail": self._data_cache.get("today_air", {}).get("detail", ""),
             "hot_index": self._current_hot_index + 1,
-            "update_time": self._last_successful_update  # 添加更新时间属性
+            "update_time": self._last_successful_update
         }

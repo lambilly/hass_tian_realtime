@@ -68,7 +68,13 @@ class TianHotNewsSensor(TianBaseSensor):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self.coordinator.data.get("today_hot", {})
+        data = self.coordinator.data.get("today_hot", {})
+        # 确保包含 update_time 属性
+        attributes = dict(data)
+        # 如果数据中没有 update_time，使用 last_update
+        if "update_time" not in attributes:
+            attributes["update_time"] = self.coordinator.data.get("last_update")
+        return attributes
 
 
 class TianOilPriceSensor(TianBaseSensor):
@@ -86,7 +92,13 @@ class TianOilPriceSensor(TianBaseSensor):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self.coordinator.data.get("today_oil", {})
+        data = self.coordinator.data.get("today_oil", {})
+        # 确保包含 update_time 属性
+        attributes = dict(data)
+        # 如果数据中没有 update_time，使用 last_update
+        if "update_time" not in attributes:
+            attributes["update_time"] = self.coordinator.data.get("last_update")
+        return attributes
 
 
 class TianExchangeRateSensor(TianBaseSensor):
@@ -104,7 +116,13 @@ class TianExchangeRateSensor(TianBaseSensor):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self.coordinator.data.get("today_rate", {})
+        data = self.coordinator.data.get("today_rate", {})
+        # 确保包含 update_time 属性
+        attributes = dict(data)
+        # 如果数据中没有 update_time，使用 last_update
+        if "update_time" not in attributes:
+            attributes["update_time"] = self.coordinator.data.get("last_update")
+        return attributes
 
 
 class TianAirQualitySensor(TianBaseSensor):
@@ -122,7 +140,13 @@ class TianAirQualitySensor(TianBaseSensor):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self.coordinator.data.get("today_air", {})
+        data = self.coordinator.data.get("today_air", {})
+        # 确保包含 update_time 属性
+        attributes = dict(data)
+        # 如果数据中没有 update_time，使用 last_update
+        if "update_time" not in attributes:
+            attributes["update_time"] = self.coordinator.data.get("last_update")
+        return attributes
 
 
 class TianScrollContentSensor(TianBaseSensor):
@@ -130,7 +154,7 @@ class TianScrollContentSensor(TianBaseSensor):
 
     _attr_name = ENTITY_SCROLL_CONTENT
     _attr_unique_id = f"{DOMAIN}_scroll_content"
-    _attr_icon = "mdi:chart-box-outline"  # 修改为图表框图标
+    _attr_icon = "mdi:chart-box-outline"
 
     @property
     def native_value(self):
