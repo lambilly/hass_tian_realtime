@@ -100,13 +100,15 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         self._last_successful_update = None
         self._morning_retry_count = 0
         self._morning_retry_unsub = None
+        self._afternoon_retry_count = 0
+        self._afternoon_retry_unsub = None
         
         # 启动定时更新和滚动更新
         self._setup_scheduled_updates()
         self._setup_scroll_updates()
 
     def _setup_scheduled_updates(self):
-        """Setup scheduled updates at 7:00 and 16:00 using local time."""
+        """Setup scheduled updates at 7:00 and 17:00 using local time."""
         # 取消现有的定时器
         self.cancel_scheduled_updates()
         
@@ -122,38 +124,47 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             )
         )
         
-        # 下午16点的定时更新
+        # 下午17点的定时更新
         self._scheduled_update_unsub.append(
             async_track_time_change(
                 self.hass,
                 self._async_afternoon_update,
-                hour=16,
+                hour=17,
                 minute=0,
                 second=0
             )
         )
         
-        _LOGGER.info("Scheduled updates set for 7:00 and 16:00 daily (local time)")
+        _LOGGER.info("Scheduled updates set for 7:00 and 17:00 daily (local time)")
 
     async def _async_morning_update(self, now=None):
         """Perform morning update at 7:00 with retry mechanism."""
         _LOGGER.info("Performing morning data update at 7:00")
+        # 取消下午可能的重试
+        if self._afternoon_retry_unsub:
+            self._afternoon_retry_unsub()
+            self._afternoon_retry_unsub = None
+            self._afternoon_retry_count = 0
+            _LOGGER.info("Cancelled afternoon retry due to morning update")
+        
         self._morning_retry_count = 0
-        await self._async_perform_update_with_retry()
+        await self._async_perform_morning_update_with_retry()
 
     async def _async_afternoon_update(self, now=None):
-        """Perform afternoon update at 16:00."""
-        _LOGGER.info("Performing afternoon data update at 16:00")
+        """Perform afternoon update at 17:00 with retry mechanism."""
+        _LOGGER.info("Performing afternoon data update at 17:00")
         # 取消早上可能的重试
         if self._morning_retry_unsub:
             self._morning_retry_unsub()
             self._morning_retry_unsub = None
+            self._morning_retry_count = 0
             _LOGGER.info("Cancelled morning retry due to afternoon update")
         
-        await self.async_refresh()
+        self._afternoon_retry_count = 0
+        await self._async_perform_afternoon_update_with_retry()
 
-    async def _async_perform_update_with_retry(self):
-        """Perform update with retry mechanism for morning updates."""
+    async def _async_perform_morning_update_with_retry(self):
+        """Perform morning update with retry mechanism."""
         try:
             await self.async_refresh()
             # 如果更新成功，重置重试计数
@@ -169,22 +180,56 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
             # 检查是否应该重试
             if self._morning_retry_count < 2:
                 self._morning_retry_count += 1
-                _LOGGER.info("Scheduling retry %s in 10 minutes", self._morning_retry_count)
+                _LOGGER.info("Scheduling morning retry %s in 10 minutes", self._morning_retry_count)
                 
                 # 10分钟后重试
                 self._morning_retry_unsub = async_track_time_interval(
                     self.hass,
-                    self._async_retry_update,
+                    self._async_morning_retry_update,
                     timedelta(minutes=10)
                 )
             else:
                 _LOGGER.error("Morning update failed after %s retries", self._morning_retry_count)
                 self._morning_retry_count = 0
 
-    async def _async_retry_update(self, now=None):
-        """Perform retry update."""
-        _LOGGER.info("Performing retry update (attempt %s)", self._morning_retry_count)
-        await self._async_perform_update_with_retry()
+    async def _async_perform_afternoon_update_with_retry(self):
+        """Perform afternoon update with retry mechanism."""
+        try:
+            await self.async_refresh()
+            # 如果更新成功，重置重试计数
+            self._afternoon_retry_count = 0
+            if self._afternoon_retry_unsub:
+                self._afternoon_retry_unsub()
+                self._afternoon_retry_unsub = None
+            _LOGGER.info("Afternoon update successful")
+            
+        except Exception as err:
+            _LOGGER.error("Error during afternoon update: %s", err)
+            
+            # 检查是否应该重试
+            if self._afternoon_retry_count < 2:
+                self._afternoon_retry_count += 1
+                _LOGGER.info("Scheduling afternoon retry %s in 10 minutes", self._afternoon_retry_count)
+                
+                # 10分钟后重试
+                self._afternoon_retry_unsub = async_track_time_interval(
+                    self.hass,
+                    self._async_afternoon_retry_update,
+                    timedelta(minutes=10)
+                )
+            else:
+                _LOGGER.error("Afternoon update failed after %s retries", self._afternoon_retry_count)
+                self._afternoon_retry_count = 0
+
+    async def _async_morning_retry_update(self, now=None):
+        """Perform morning retry update."""
+        _LOGGER.info("Performing morning retry update (attempt %s)", self._morning_retry_count)
+        await self._async_perform_morning_update_with_retry()
+
+    async def _async_afternoon_retry_update(self, now=None):
+        """Perform afternoon retry update."""
+        _LOGGER.info("Performing afternoon retry update (attempt %s)", self._afternoon_retry_count)
+        await self._async_perform_afternoon_update_with_retry()
 
     def _setup_scroll_updates(self):
         """Setup periodic scroll updates."""
@@ -217,6 +262,9 @@ class TianRealtimeCoordinator(DataUpdateCoordinator):
         if self._morning_retry_unsub:
             self._morning_retry_unsub()
             self._morning_retry_unsub = None
+        if self._afternoon_retry_unsub:
+            self._afternoon_retry_unsub()
+            self._afternoon_retry_unsub = None
 
     @callback
     def _async_update_scroll_content(self, now=None):
