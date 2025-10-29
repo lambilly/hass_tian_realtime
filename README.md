@@ -129,16 +129,16 @@ content: >-
 ## 故障排除
 ### 常见问题
 1.	API 调用失败
-o	检查 API 密钥是否正确
-o	确认已开通相应接口
-o	查看 Home Assistant 日志获取详细错误信息
+   - 检查 API 密钥是否正确
+   - 确认已开通相应接口
+   - 查看 Home Assistant 日志获取详细错误信息
 2.	数据不更新
-o	检查网络连接
-o	确认更新间隔设置合理
-o	重启集成
+   - 检查网络连接
+   - 确认更新间隔设置合理
+   - 重启集成
 3.	实体不可用
-o	重启 Home Assistant
-o	检查集成配置
+   - 重启 Home Assistant
+   - 检查集成配置
 ### 日志调试
 在 configuration.yaml 中添加以下配置开启详细日志：
 ```yaml
