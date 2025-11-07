@@ -161,6 +161,9 @@ logger:
 
 ## 捐赠支持
 如果您觉得这个项目对您有帮助，欢迎通过支付宝支持：
+
 ### 支付宝收款码
+
 ![支付宝收款码](https://github.com/lambilly/hass_tian_realtime/raw/main/alipay.jpg)
+
 扫描上方二维码支持作者
