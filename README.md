@@ -164,6 +164,6 @@ logger:
 
 ### 支付宝收款码
 
-![支付宝收款码](https://github.com/lambilly/hass_tian_realtime/raw/main/alipay.jpg)
+![支付宝收款码](http://home.lamnas.top:8088/web_images/alipay.jpg)
 
 扫描上方二维码支持作者
