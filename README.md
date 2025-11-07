@@ -163,6 +163,6 @@ logger:
 
 如果您觉得这个集成对您有帮助，欢迎扫描下方的支付宝二维码进行捐赠，以支持项目的持续开发和维护：
 
-![支付宝捐赠二维码](http://home.lamnas.top:8088/web_images/alipay.jpg)
+![支付宝捐赠二维码](https://home.lamnas.top:8443/web_images/alipay.jpg)
 
 感谢您的支持！
