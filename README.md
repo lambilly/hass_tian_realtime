@@ -158,4 +158,4 @@ logger:
 
 本项目采用 MIT 许可证
 - 查看 LICENSE 文件了解详情。
-[![hacs_badge](https://github.com/lambilly/hass_tian_realtime/blob/main/b9ed5f86898c9f8e197347649ce17134.jpg)
+![支付宝收款码](https://raw.githubusercontent.com/lambilly/hass_tian_realtime/blob/main/alipay.jpg)
