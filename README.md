@@ -165,4 +165,4 @@ logger:
 
 |    |支付宝 | 微信 |
 |----|--------|------|
-|扫一扫![Image](https://github.com/user-attachments/assets/a6d0872c-d14b-4534-ba35-c8e9daeb2849)|<img width="288" height="300" alt="Image" src="https://github.com/user-attachments/assets/6045f788-9453-4d57-86c6-b7c306bcee1f" />|
+|扫一扫|![Image](https://github.com/user-attachments/assets/a6d0872c-d14b-4534-ba35-c8e9daeb2849)|![Image](https://github.com/user-attachments/assets/a0bcbb66-978e-4f51-9caf-1c3375155867)|
