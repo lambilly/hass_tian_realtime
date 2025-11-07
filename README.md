@@ -158,4 +158,11 @@ logger:
 
 本项目采用 MIT 许可证
 - 查看 LICENSE 文件了解详情。
-![支付宝收款码](https://raw.githubusercontent.com/lambilly/hass_tian_realtime/blob/main/alipay.jpg)
+
+## 捐赠支持
+如果您觉得这个项目对您有帮助，欢迎通过支付宝支持：
+<div align="center">
+### 支付宝收款码
+![支付宝收款码](https://github.com/lambilly/hass_tian_realtime/raw/main/alipay.jpg)
+扫描上方二维码支持作者
+</div>
