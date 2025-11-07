@@ -159,3 +159,4 @@ logger:
 本项目采用 MIT 许可证
 - 查看 LICENSE 文件了解详情。
 
+![支付宝捐赠二维码](images/alipay.jpg)
