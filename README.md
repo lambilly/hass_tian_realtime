@@ -159,4 +159,7 @@ logger:
 本项目采用 MIT 许可证
 - 查看 LICENSE 文件了解详情。
 
+## 捐赠支持
+
+如果您觉得这个集成对您有帮助，欢迎扫描下方的支付宝二维码进行捐赠，以支持项目的持续开发和维护：
 ![Image](https://github.com/user-attachments/assets/a8d98d43-537a-4e15-b42d-864a3021e842)
